@@ -29,10 +29,6 @@ jobs:
           else
             git -c user.name="github-actions[bot]" \
                 -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-                commit -m "$(cat <<'EOF'
-chore: update Russia IP ranges from opencck
-
-EOF
-)"
+                commit -m "chore: update Russia IP ranges from opencck"
             git push
           fi
