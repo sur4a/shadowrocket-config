@@ -5,6 +5,10 @@ on:
     - cron: "*/5 * * * *"
   workflow_dispatch:
 
+concurrency:
+  group: update-russia-config
+  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -13,10 +17,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Sync with remote
+        run: git pull --rebase origin main
 
       - name: Update russia.config
         run: python scripts/update_config.py
@@ -26,9 +35,18 @@ jobs:
           git add russia.config
           if git diff --staged --quiet; then
             echo "No changes to commit"
-          else
-            git -c user.name="github-actions[bot]" \
-                -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-                commit -m "chore: update Russia IP ranges from opencck"
-            git push
+            exit 0
           fi
+
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "chore: update Russia IP ranges from opencck"
+
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main && git push origin main && exit 0
+            echo "Push failed, retrying in 10s (attempt ${attempt}/5)..."
+            sleep 10
+          done
+
+          echo "Failed to push after 5 attempts"
+          exit 1
